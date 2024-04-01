@@ -1,0 +1,135 @@
+---
+name: Git tag
+description: Tagging git repo
+author: ixxeL
+inputs:
+  tag-msg:
+    required: false
+    default: "ci"
+    description: msg of the tag
+  tag-value:
+    required: true
+    description: tag to use
+  commit-sha:
+    required: false
+    description: commit sha to tag
+  git-workdir:
+    required: false
+    default: .
+    description: working directory of git
+  tls-verify:
+    required: false
+    default: "false"
+    description: tls verification
+  push-option:
+    required: false
+    default: "ci skip"
+    description: option of the git push
+  git-email:
+    required: false
+    default: username@users.noreply.github.com
+    description: default git email
+  force-tag:
+    required: false
+    default: "false"
+    description: git force push tag
+  update-base-tags:
+    required: false
+    default: "false"
+    description: update base tags (minor, major and latest)
+outputs:
+  TAG_EXISTS:
+    description: tag exists or not
+    value: ${{ steps.git-tag.outputs.TAG_EXISTS }}
+  MAJOR_TAG:
+    description: major base tag
+    value: ${{ steps.git-tag.outputs.MAJOR_TAG }}
+  MINOR_TAG:
+    description: minor base tag
+    value: ${{ steps.git-tag.outputs.MINOR_TAG }}
+
+runs:
+  using: composite
+  steps:
+    - id: git-tag
+      run: |
+        set +e
+        echo -e "${BLUE}[ STEP - TAG GIT REPO ] > Tagging git repo ${REPO_URL}${BLANK}"
+        echo -e "${CYAN}[ INFO ] > Git version.${BLANK}"
+        git version
+
+        echo -e "${YELLOW}[ EXECUTING ] > Showing repo information.${BLANK}"
+        echo -e "${CYAN}[ INFO ] > git status.${BLANK}"
+        git -C ${{ inputs.git-workdir }} -c color.status=always status
+        echo -e "${CYAN}[ INFO ] > git diff.${BLANK}"
+        git -C ${{ inputs.git-workdir }} diff --color=always
+        echo -e "${CYAN}[ INFO ] > git branch.${BLANK}"
+        git -C ${{ inputs.git-workdir }} branch
+        echo -e "${CYAN}[ INFO ] > git origin.${BLANK}"
+        git -C ${{ inputs.git-workdir }} remote show origin
+
+        if [ "$(git tag -l "${{ inputs.tag-value }}")" ]
+        then
+          tag_exists=true
+        else
+          tag_exists=false
+        fi
+        echo "TAG_EXISTS=${tag_exists}" >> "${GITHUB_OUTPUT}"
+
+        echo -e "${YELLOW}[ EXECUTING ] > tag ${PURPLE}${{ inputs.tag-value }}${YELLOW} on ${PURPLE}${{ inputs.commit-sha }}${YELLOW} commit and push to destination ${PUSH_URL}${BLANK}"
+        if [ "${tag_exists}" = 'true' ]
+        then
+          if [ "${{ inputs.force-tag }}" = 'true' ]
+          then
+            echo -e "${CYAN}[ INFO ] Force push tag${BLANK}"
+            git -C ${{ inputs.git-workdir }} tag -fa ${{ inputs.tag-value }} ${{ inputs.commit-sha }} -m "${TAG_MSG}"
+          else
+            echo -e "${RED}[ ERROR ] Tag already exists${BLANK}"
+            exit 1
+          fi
+        else
+          git -C ${{ inputs.git-workdir }} tag -a ${{ inputs.tag-value }} ${{ inputs.commit-sha }} -m "${TAG_MSG}"
+        fi
+        git -C ${{ inputs.git-workdir }} push origin ${{ inputs.tag-value }} --push-option "${{ inputs.push-option }}"
+
+        if [ $? -eq 0 ]
+        then
+          echo -e "${GREEN}[ SUCCESS ] New tag added to origin: ${YELLOW}${{ inputs.tag-value }}${BLANK}"
+        else
+          echo -e "${RED}[ ERROR ] Could not add tag${BLANK}"
+          exit 1
+        fi
+
+        if [[ "${{ inputs.update-base-tags }}" == "true" ]]
+        then
+          echo -e "${YELLOW}[ EXECUTING ] > Updating base tags${BLANK}"
+          major_version=$(echo "${{ inputs.tag-value }}" | awk -F. '{print $1}')
+          minor_version=$(echo "${{ inputs.tag-value }}" | awk -F. '{print $1"."$2}')
+          echo "MAJOR_TAG=$major_version" >> $GITHUB_OUTPUT
+          echo "MINOR_TAG=$minor_version" >> $GITHUB_OUTPUT
+          git -C ${{ inputs.git-workdir }} tag -f ${major_version} ${{ inputs.commit-sha }}
+          git -C ${{ inputs.git-workdir }} tag -f ${minor_version} ${{ inputs.commit-sha }}
+          git -C ${{ inputs.git-workdir }} tag -f latest ${{ inputs.commit-sha }}
+          git -C ${{ inputs.git-workdir }} push -f origin --tags --push-option "${{ inputs.push-option }}"
+
+          if [ $? -eq 0 ]
+          then
+            echo -e "${GREEN}[ SUCCESS ] Update base minor tag succeeded : ${YELLOW}${minor_version}${BLANK}"
+            echo -e "${GREEN}[ SUCCESS ] Update base major tag succeeded : ${YELLOW}${major_version}${BLANK}"
+            echo -e "${GREEN}[ SUCCESS ] Update latest tag succeeded${BLANK}"
+          else
+            echo -e "${RED}[ ERROR ] Could not add base tags${BLANK}"
+            exit 1
+          fi
+        else
+          exit 0
+        fi
+      shell: bash
+      env:
+        RED: \033[1;31m
+        GREEN: \033[1;32m
+        YELLOW: \033[1;33m
+        BLUE: \033[1;34m
+        PURPLE: \033[1;35m
+        CYAN: \033[1;36m
+        BLANK: \033[0m

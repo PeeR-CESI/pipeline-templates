@@ -212,6 +212,7 @@ jobs:
             ${{ inputs.build-arg }}
           tags: |
             ${{ inputs.cache-registry }}/${{ inputs.img-name }}:sha-${{ github.sha }}
+            ${{ inputs.cache-registry }}/${{ inputs.img-name }}:dev-${{ github.run_number }}
 
       - name: Skopeo retag [ Artefact promotion ]
         if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && github.event_name != 'pull_request' && steps.pr-origin.outputs.PR_NUMBER != ''

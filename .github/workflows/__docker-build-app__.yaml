@@ -130,7 +130,8 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
-          flutter-version-file: ${{ inputs.workingdir }}/pubspec.yaml
+          flutter-version: 3.19.5
+      - run: flutter --version
 
       - name: Flutter pub get
         if: inputs.is_flutter_project == 'true'
@@ -195,6 +196,13 @@ jobs:
           commit: ${{ github.sha }}
         env:
           GH_TOKEN: ${{ github.token }}
+
+      - name: Upload APK as artifact
+        if: inputs.is_flutter_project == 'true'
+        uses: actions/upload-artifact@v2
+        with:
+          name: flutter-apk
+          path: ${{ inputs.workingdir }}/build/app/outputs/flutter-apk/app-release.apk
 
       - name: Set up QEMU
         if: github.event_name == 'pull_request' || steps.pr-origin.outputs.PR_NUMBER == ''

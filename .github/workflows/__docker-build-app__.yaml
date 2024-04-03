@@ -1,5 +1,5 @@
 ---
-name: Releasing docker image
+name: Build flutter app and releasing docker image
 on:
   workflow_call:
     secrets:
@@ -101,6 +101,10 @@ on:
         required: false
         default: false
         type: boolean
+      is_flutter_project:
+        required: false
+        default: "false"
+        type: string
   workflow_dispatch:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -120,6 +124,33 @@ jobs:
         with:
           fetch-depth: "0"
           token: ${{ secrets.git-token }}
+
+      - name: Set up Flutter
+        if: inputs.is_flutter_project == 'true'
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version-file: ${{ inputs.workingdir }}/pubspec.yaml
+
+      - name: Flutter pub get
+        if: inputs.is_flutter_project == 'true'
+        run: flutter pub get
+        working-directory: ${{ inputs.workingdir }}
+
+      - name: Run Flutter tests
+        if: inputs.is_flutter_project == 'true'
+        run: flutter test
+        working-directory: ${{ inputs.workingdir }}
+
+      - name: Build Flutter Web
+        if: inputs.is_flutter_project == 'true'
+        run: flutter build web
+        working-directory: ${{ inputs.workingdir }}
+
+      - name: Build Flutter APK
+        if: inputs.is_flutter_project == 'true'
+        run: flutter build apk
+        working-directory: ${{ inputs.workingdir }}
 
       - name: Git config
         id: git-config

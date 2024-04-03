@@ -35,6 +35,10 @@ on:
       registry-username:
         required: false
         type: string
+      is_flutter_project:
+        required: false
+        default: "false"
+        type: string
 jobs:
   docker-build:
     concurrency:
@@ -47,6 +51,7 @@ jobs:
       cache-registry: ${{ inputs.cache-registry }}
       registry-url: ${{ inputs.registry-url }}
       registry-username: ${{ inputs.registry-username }}
+      is_flutter_project: ${{ inputs.is_flutter_project }}
       publish: false
     secrets:
       git-token: ${{ secrets.git-token }}

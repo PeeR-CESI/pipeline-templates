@@ -131,7 +131,10 @@ jobs:
         with:
           channel: stable
           flutter-version: 3.19.1
-      - run: flutter --version
+
+      - name: Check Flutter version
+        if: inputs.is_flutter_project == 'true'
+        run: flutter --version
 
       - name: Flutter pub get
         if: inputs.is_flutter_project == 'true'
